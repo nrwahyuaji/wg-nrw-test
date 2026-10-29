@@ -1,0 +1,24 @@
+{
+  "$comment": "Token desain WG-WebUI, diadopsi dari Project-Agent-Monitor / LMS-CBT agar panel tim terasa satu keluarga. Sumber kebenaran nanti: WG-Frontend/src/index.css (@theme), diisi Tugas 6.1. Semua pasangan teks/latar di bawah memenuhi kontras AA >= 4.5:1.",
+  "color": {
+    "background": { "light": "#f8fafc", "dark": "#0b1120", "keterangan": "latar halaman" },
+    "card": { "light": "#ffffff", "dark": "#111a2e", "keterangan": "kartu/panel" },
+    "foreground": { "light": "#0f172a", "dark": "#e5edf9", "keterangan": "teks utama" },
+    "muted-foreground": { "light": "#5b6478", "dark": "#97a3b6", "keterangan": "teks sekunder" },
+    "border": { "light": "#e2e8f0", "dark": "#22304d", "keterangan": "garis/pembatas" },
+    "primary": { "light": "#1d4ed8", "dark": "#60a5fa", "keterangan": "aksi utama" },
+    "primary-foreground": { "light": "#ffffff", "dark": "#0b1120", "keterangan": "teks di atas primary" },
+    "destructive": { "light": "#b91c1c", "dark": "#f87171", "keterangan": "hapus, rotasi key, galat" },
+    "online": { "light": "#047857", "dark": "#34d399", "keterangan": "peer online (handshake < 3 menit)" },
+    "offline": { "light": "#5b6478", "dark": "#97a3b6", "keterangan": "peer offline" },
+    "disabled": { "light": "#b45309", "dark": "#fbbf24", "keterangan": "nonaktif: manual/expired/quota" },
+    "sidebar": { "light": "#0b1324", "dark": "#070d1a", "keterangan": "sidebar gelap di kedua tema" }
+  },
+  "radius": { "control": "10px", "card": "14px", "badge": "6px" },
+  "typography": {
+    "sans": "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif",
+    "mono": "ui-monospace, \"Cascadia Code\", Consolas, monospace",
+    "keterangan": "public key, IP, dan CIDR selalu memakai mono + tabular-nums"
+  },
+  "status": { "online-threshold-seconds": 180, "poll-interval-seconds": 5 }
+}

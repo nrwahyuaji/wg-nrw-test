@@ -1,0 +1,41 @@
+module wgpanel
+
+go 1.26.0
+
+toolchain go1.26.9
+
+require (
+	github.com/go-chi/chi/v5 v5.3.2
+	github.com/pressly/goose/v3 v3.28.0
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/vishvananda/netlink v1.3.1
+	golang.org/x/crypto v0.57.0
+	golang.org/x/term v0.46.0
+	golang.org/x/time v0.16.0
+	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20241231184526-a9ab2273dd10
+	modernc.org/sqlite v1.60.1
+)
+
+require (
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/josharian/native v1.1.0 // indirect
+	github.com/mattn/go-isatty v0.0.24 // indirect
+	github.com/mdlayher/genetlink v1.3.2 // indirect
+	github.com/mdlayher/netlink v1.7.2 // indirect
+	github.com/mdlayher/socket v0.5.1 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
+	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/sethvargo/go-retry v0.4.0 // indirect
+	github.com/vishvananda/netns v0.0.5 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173 // indirect
+	modernc.org/libc v1.77.1 // indirect
+	modernc.org/mathutil v1.7.1 // indirect
+	modernc.org/memory v1.12.1 // indirect
+)

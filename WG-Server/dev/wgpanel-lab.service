@@ -1,0 +1,13 @@
+# Unit DEV: siapkan lab netns (wgdev + wgcli) sebelum wgpanel-dev.service. Hanya untuk host development.
+[Unit]
+Description=WG-WebUI lab network namespace (dev)
+Before=wgpanel-dev.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/lib/wgpanel-dev/devlab.sh up
+ExecStop=/usr/local/lib/wgpanel-dev/devlab.sh down
+
+[Install]
+WantedBy=multi-user.target

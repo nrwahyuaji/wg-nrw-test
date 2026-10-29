@@ -1,0 +1,691 @@
+openapi: 3.1.0
+info:
+  title: WG-WebUI API
+  version: "0.5.0"
+  description: |
+    Kontrak REST panel WireGuard (Fase 2–5). Respons sukses dibungkus `{"data": ...}`, galat `{"error": {...}}`.
+    Semua request yang mengubah state wajib membawa header `X-Requested-With: wgpanel` (CSRF, DESIGN 7.2).
+    Sesi = cookie HttpOnly `wgp_session`. Daftar ini diuji sinkron dengan router oleh
+    `WG-Server/internal/api/openapi_test.go`.
+servers:
+  - url: /
+tags:
+  - name: system
+  - name: auth
+  - name: interfaces
+  - name: peers
+  - name: status
+security:
+  - session: []
+paths:
+  /healthz:
+    get:
+      tags: [system]
+      summary: Proses hidup
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/StatusOK" }
+  /readyz:
+    get:
+      tags: [system]
+      summary: Basis data menjawab
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/StatusOK" }
+        "503": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Login, memasang cookie sesi
+      security: []
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "204": { description: Login berhasil, cookie sesi dipasang }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: Cabut sesi saat ini
+      security: []
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "204": { description: Sesi dicabut (juga bila sudah tidak ada) }
+  /api/v1/me:
+    get:
+      tags: [auth]
+      summary: Profil user yang login
+      responses:
+        "200":
+          description: Profil
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties: { data: { $ref: "#/components/schemas/User" } }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/me/password:
+    put:
+      tags: [auth]
+      summary: Ganti password sendiri (sesi lain dicabut)
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangePasswordRequest" }
+      responses:
+        "204": { description: Password diganti }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/interfaces:
+    get:
+      tags: [interfaces]
+      summary: Daftar interface (admin, operator)
+      responses:
+        "200":
+          description: Daftar
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Interface" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [interfaces]
+      summary: Buat interface (admin); keypair dibuat server
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InterfaceRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/InterfaceOK" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /api/v1/interfaces/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [interfaces]
+      summary: Satu interface (admin, operator)
+      responses:
+        "200": { $ref: "#/components/responses/InterfaceOK" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [interfaces]
+      summary: Ubah interface (admin). Nama tetap; subnet terkunci bila ada peer
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InterfaceRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/InterfaceOK" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /api/v1/interfaces/{id}/health:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [interfaces]
+      summary: Kecocokan kernel vs DB dan peringatan forwarding (admin, operator)
+      responses:
+        "200":
+          description: Kesehatan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties: { data: { $ref: "#/components/schemas/InterfaceHealth" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/interfaces/{id}/traffic:
+    parameters: [{ $ref: "#/components/parameters/ID" }, { $ref: "#/components/parameters/TrafficRange" }]
+    get:
+      tags: [interfaces]
+      summary: Trafik semua peer satu interface (admin, operator)
+      responses:
+        "200":
+          description: Titik grafik (24 per jam, atau 7/30 per hari WITA); ember tanpa data = 0
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/TrafficPoint" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/peers:
+    get:
+      tags: [peers]
+      summary: Daftar peer (admin, operator), tanpa field rahasia
+      responses:
+        "200":
+          description: Daftar
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Peer" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+    post:
+      tags: [peers]
+      summary: Tambah peer (admin); IP otomatis bila address kosong
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeerRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/PeerOK" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /api/v1/peers/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [peers]
+      summary: Satu peer (admin, operator)
+      responses:
+        "200": { $ref: "#/components/responses/PeerOK" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      tags: [peers]
+      summary: Ubah nama/catatan/owner/alamat/AllowedIPs/site_subnets (admin)
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeerRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/PeerOK" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [peers]
+      summary: Hapus peer (admin); langsung hilang dari kernel
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "204": { description: Dihapus }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/peers/{id}/enable:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    post:
+      tags: [peers]
+      summary: Aktifkan peer (admin)
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "200": { $ref: "#/components/responses/PeerOK" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/peers/{id}/disable:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    post:
+      tags: [peers]
+      summary: Nonaktifkan peer (admin), alasan 'manual'
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "200": { $ref: "#/components/responses/PeerOK" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/peers/{id}/traffic:
+    parameters: [{ $ref: "#/components/parameters/ID" }, { $ref: "#/components/parameters/TrafficRange" }]
+    get:
+      tags: [peers]
+      summary: Trafik satu peer (admin, operator)
+      responses:
+        "200":
+          description: Titik grafik (24 per jam, atau 7/30 per hari WITA); ember tanpa data = 0
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/TrafficPoint" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/peers/{id}/config:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [peers]
+      summary: Unduh .conf client (admin); memuat private key
+      responses:
+        "200":
+          description: Berkas wg-quick
+          content:
+            text/plain:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/peers/{id}/qr:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [peers]
+      summary: QR PNG dari isi .conf yang sama (admin)
+      responses:
+        "200":
+          description: PNG 512 px
+          content:
+            image/png:
+              schema: { type: string, format: binary }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/peers/{id}/share:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    post:
+      tags: [peers]
+      summary: Buat tautan berbagi sekali pakai (admin)
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "201": { $ref: "#/components/responses/PeerOK" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/peers/{id}/shares:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [peers]
+      summary: Daftar tautan berbagi peer (admin)
+      responses:
+        "200": { $ref: "#/components/responses/StatusOK" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/shares/{id}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    delete:
+      tags: [peers]
+      summary: Cabut tautan berbagi (admin)
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      responses:
+        "204": { description: Dicabut }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/share/{token}:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [peers]
+      summary: Buka tautan berbagi (publik)
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/StatusOK" }
+        "404": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+  /api/v1/share/{token}/config:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [peers]
+      summary: Unduh .conf dari tautan (publik, 10 menit)
+      security: []
+      responses:
+        "200": { description: Berkas wg-quick }
+        "404": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+  /api/v1/share/{token}/qr:
+    parameters: [{ $ref: "#/components/parameters/ID" }]
+    get:
+      tags: [peers]
+      summary: QR dari tautan (publik, 10 menit)
+      security: []
+      responses:
+        "200": { description: PNG }
+        "404": { $ref: "#/components/responses/Error" }
+        "410": { $ref: "#/components/responses/Error" }
+  /api/v1/audit:
+    get:
+      tags: [system]
+      summary: Daftar audit log (admin)
+      responses:
+        "200": { $ref: "#/components/responses/StatusOK" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/audit.csv:
+    get:
+      tags: [system]
+      summary: Ekspor audit log CSV (admin)
+      responses:
+        "200": { description: CSV }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/backup:
+    post:
+      tags: [system]
+      summary: Buat snapshot basis data (admin)
+      parameters: [{ $ref: "#/components/parameters/CSRF" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200": { description: Berkas snapshot DB diunduh }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/status:
+    get:
+      tags: [status]
+      summary: Status live semua peer (admin, operator), dipolling 5 dtk
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/PeerStatus" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/dashboard:
+    get:
+      tags: [status]
+      summary: Ringkasan dashboard (admin, operator)
+      responses:
+        "200":
+          description: Ringkasan
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties: { data: { $ref: "#/components/schemas/Dashboard" } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: wgp_session
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, format: int64, minimum: 1 }
+    TrafficRange:
+      name: range
+      in: query
+      required: false
+      schema: { type: string, enum: ["24h", "7d", "30d"], default: "24h" }
+    CSRF:
+      name: X-Requested-With
+      in: header
+      required: true
+      schema: { type: string, enum: [wgpanel] }
+  responses:
+    StatusOK:
+      description: OK
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties:
+              data:
+                type: object
+                required: [status]
+                properties: { status: { type: string } }
+    Error:
+      description: Galat
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    ValidationError:
+      description: Galat validasi per field
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorEnvelope" }
+    InterfaceOK:
+      description: Interface
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties: { data: { $ref: "#/components/schemas/Interface" } }
+    PeerOK:
+      description: Peer
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [data]
+            properties: { data: { $ref: "#/components/schemas/Peer" } }
+  schemas:
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error: { $ref: "#/components/schemas/ApiErrorBody" }
+    ApiErrorBody:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, description: Kode stabil berbahasa Inggris }
+        message: { type: string, description: Pesan berbahasa Indonesia }
+        fields:
+          type: array
+          items: { $ref: "#/components/schemas/FieldError" }
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string, format: password }
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, format: password }
+        new_password: { type: string, format: password }
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        role: { type: string, enum: [admin, operator, user] }
+    InterfaceRequest:
+      type: object
+      required: [name, address, listen_port, endpoint_host]
+      properties:
+        name: { type: string, pattern: "^[a-z][a-z0-9]{0,14}$" }
+        address: { type: string, description: CIDR server, mis. 10.8.0.1/24 }
+        listen_port: { type: integer, minimum: 1, maximum: 65535 }
+        mtu: { type: integer, description: 0 atau 1280–9000 }
+        endpoint_host: { type: string, description: Host/IP publik tanpa skema dan port }
+        client_dns: { type: array, items: { type: string } }
+        client_allowed_ips: { type: array, items: { type: string } }
+        client_keepalive: { type: integer, minimum: 0, maximum: 65535 }
+        enabled: { type: boolean }
+    Interface:
+      type: object
+      required: [id, name, address, listen_port, mtu, public_key, endpoint_host, client_dns, client_allowed_ips, client_keepalive, enabled, created_at, updated_at]
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        address: { type: string }
+        listen_port: { type: integer }
+        mtu: { type: integer }
+        public_key: { type: string }
+        endpoint_host: { type: string }
+        client_dns: { type: array, items: { type: string } }
+        client_allowed_ips: { type: array, items: { type: string } }
+        client_keepalive: { type: integer }
+        enabled: { type: boolean }
+        created_at: { type: integer, format: int64 }
+        updated_at: { type: integer, format: int64 }
+    InterfaceHealth:
+      type: object
+      required: [in_kernel, up, listen_port_kernel, listen_port_db, peers_kernel, peers_db, ip_forward, warnings]
+      properties:
+        in_kernel: { type: boolean }
+        up: { type: boolean }
+        listen_port_kernel: { type: integer }
+        listen_port_db: { type: integer }
+        peers_kernel: { type: integer }
+        peers_db: { type: integer }
+        ip_forward: { type: [boolean, "null"] }
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [not_in_kernel, link_down, port_mismatch, peer_mismatch, ip_forward_off, interface_disabled]
+    PeerRequest:
+      type: object
+      required: [name]
+      properties:
+        interface_id: { type: integer, format: int64, description: Wajib saat POST }
+        name: { type: string }
+        note: { type: string }
+        owner_user_id: { type: [integer, "null"], format: int64 }
+        address: { type: string, description: Kosong = IP otomatis }
+        public_key: { type: string, description: Kosong = keypair dibuat server (POST saja) }
+        use_psk: { type: boolean, description: POST saja }
+        client_allowed_ips: { type: array, items: { type: string } }
+        site_subnets: { type: array, items: { type: string } }
+    Peer:
+      type: object
+      required: [id, interface_id, owner_user_id, name, note, address, public_key, has_private_key, has_psk, client_allowed_ips, site_subnets, enabled, disabled_reason, expires_at, created_at, updated_at]
+      properties:
+        id: { type: integer, format: int64 }
+        interface_id: { type: integer, format: int64 }
+        owner_user_id: { type: [integer, "null"], format: int64 }
+        name: { type: string }
+        note: { type: string }
+        address: { type: string }
+        public_key: { type: string }
+        has_private_key: { type: boolean }
+        has_psk: { type: boolean }
+        client_allowed_ips: { type: array, items: { type: string } }
+        site_subnets: { type: array, items: { type: string } }
+        enabled: { type: boolean }
+        disabled_reason: { type: string, enum: ["", manual, expired, quota] }
+        expires_at: { type: [integer, "null"], format: int64 }
+        quota_bytes: { type: integer, format: int64, description: "0 = tanpa kuota; GiB × 1024³ byte" }
+        quota_period: { type: string, enum: ["none", "monthly"] }
+        quota_used_bytes: { type: integer, format: int64 }
+        created_at: { type: integer, format: int64 }
+        updated_at: { type: integer, format: int64 }
+    TrafficPoint:
+      type: object
+      required: [at, rx, tx]
+      properties:
+        at: { type: integer, format: int64, description: "awal jam (24h) atau awal hari WITA (7d/30d), unix detik" }
+        rx: { type: integer, format: int64 }
+        tx: { type: integer, format: int64 }
+    PeerStatus:
+      type: object
+      required: [peer_id, interface_id, online, last_handshake, endpoint, rx, tx]
+      properties:
+        peer_id: { type: integer, format: int64 }
+        interface_id: { type: integer, format: int64 }
+        online: { type: boolean }
+        last_handshake: { type: [integer, "null"], format: int64 }
+        endpoint: { type: string }
+        rx: { type: integer, format: int64 }
+        tx: { type: integer, format: int64 }
+    Dashboard:
+      type: object
+      required: [peers_total, peers_enabled, peers_online, interfaces, expiring_soon, today_rx, today_tx, top_peers_today]
+      properties:
+        today_rx: { type: integer, format: int64, description: "byte diterima server sejak 00.00 WITA" }
+        today_tx: { type: integer, format: int64 }
+        top_peers_today:
+          type: array
+          description: maksimal 5 peer dengan trafik terbesar hari ini (WITA)
+          items:
+            type: object
+            required: [id, name, interface_id, rx, tx]
+            properties:
+              id: { type: integer, format: int64 }
+              name: { type: string }
+              interface_id: { type: integer, format: int64 }
+              rx: { type: integer, format: int64 }
+              tx: { type: integer, format: int64 }
+        peers_total: { type: integer }
+        peers_enabled: { type: integer }
+        peers_online: { type: integer }
+        interfaces:
+          type: array
+          items:
+            type: object
+            required: [id, name, enabled, up, peers, peers_online]
+            properties:
+              id: { type: integer, format: int64 }
+              name: { type: string }
+              enabled: { type: boolean }
+              up: { type: boolean }
+              peers: { type: integer }
+              peers_online: { type: integer }
+        expiring_soon:
+          type: array
+          items:
+            type: object
+            required: [id, name, interface_id, expires_at]
+            properties:
+              id: { type: integer, format: int64 }
+              name: { type: string }
+              interface_id: { type: integer, format: int64 }
+              expires_at: { type: integer, format: int64 }

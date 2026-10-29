@@ -1,0 +1,20 @@
+# biner & data lokal
+WG-Server/wgpanel
+WG-Server/bin/
+WG-Server/tmp/
+WG-Server/internal/web/dist/*
+!WG-Server/internal/web/dist/.gitkeep
+*.db
+*.db-wal
+*.db-shm
+*.env
+!*.env.example
+# frontend
+WG-Frontend/node_modules/
+WG-Frontend/dist/
+WG-Frontend/test-results/
+WG-Frontend/playwright-report/
+*.log
+*.tsbuildinfo
+WG-Frontend/e2e/.auth/
+WG-Frontend/.shot-*.mjs

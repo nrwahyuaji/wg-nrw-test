@@ -1,0 +1,62 @@
+/* Token desain dari Plan/tailwind.theme.json (sumber kebenaran sejak Tugas 6.1). Tema terang bawaan; tema gelap
+   lewat class .dark di <html> (dipasang Tugas 6.3) atau preferensi sistem. Semua pasangan teks/latar AA >= 4.5:1. */
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: #f8fafc;
+  --color-card: #ffffff;
+  --color-foreground: #0f172a;
+  --color-muted-foreground: #5b6478;
+  --color-border: #e2e8f0;
+  --color-primary: #1d4ed8;
+  --color-primary-foreground: #ffffff;
+  --color-destructive: #b91c1c;
+  --color-online: #047857;
+  --color-offline: #5b6478;
+  --color-disabled: #b45309;
+  --color-sidebar: #0b1324;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-badge: 6px;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+
+@layer base {
+  .dark {
+    --color-background: #0b1120;
+    --color-card: #111a2e;
+    --color-foreground: #e5edf9;
+    --color-muted-foreground: #97a3b6;
+    --color-border: #22304d;
+    --color-primary: #60a5fa;
+    --color-primary-foreground: #0b1120;
+    --color-destructive: #f87171;
+    --color-online: #34d399;
+    --color-offline: #97a3b6;
+    --color-disabled: #fbbf24;
+    --color-sidebar: #070d1a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+      --color-background: #0b1120;
+      --color-card: #111a2e;
+      --color-foreground: #e5edf9;
+      --color-muted-foreground: #97a3b6;
+      --color-border: #22304d;
+      --color-primary: #60a5fa;
+      --color-primary-foreground: #0b1120;
+      --color-destructive: #f87171;
+      --color-online: #34d399;
+      --color-offline: #97a3b6;
+      --color-disabled: #fbbf24;
+      --color-sidebar: #070d1a;
+    }
+  }
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
